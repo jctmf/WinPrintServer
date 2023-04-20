@@ -4,6 +4,7 @@
 #include <iostream>
 #include <WinSock2.h>
 #include <stdarg.h>
+#include <windows.h>
 
 LPCWSTR dataType;
 std::wstring printerName = L"EPSON098CEF (WF-3520 Series)";
@@ -17,13 +18,17 @@ void showUsage();
 
 int wmain(int argc, wchar_t* argv[])
 {
+    //Adjust console codpage to show latin characters.
+    SetConsoleCP(1252);
+    SetConsoleOutputCP(1252);
+
     WORD wVersionRequested = MAKEWORD(2, 2);
     WSADATA wsaData;
 
     int status = WSAStartup(wVersionRequested, &wsaData);
     if (status != 0)
     {
-        logFatal(L"failed to initialize the socket library", status);
+        logFatal(L"Falhou ao iniciar a biblioteca do socket", status);
     }
 
     if (argc == 1) 
@@ -31,7 +36,7 @@ int wmain(int argc, wchar_t* argv[])
         DWORD cb;
         if (!GetDefaultPrinter(NULL, &cb) && GetLastError() != ERROR_INSUFFICIENT_BUFFER) 
         {
-            logFatal(L"no default printer defined", GetLastError());
+            logFatal(L"Nenhuma impressora padrão definida", GetLastError());
         }
         LPWSTR szBuffer = new WCHAR[cb];
         GetDefaultPrinter(szBuffer, &cb);
@@ -54,7 +59,7 @@ int wmain(int argc, wchar_t* argv[])
     SOCKET serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == INVALID_SOCKET)
     {
-        logFatal(L"failed to create server socket", WSAGetLastError());
+        logFatal(L"Falha ao criar socket do servidor", WSAGetLastError());
     }
 
     sockaddr_in addr{};
@@ -65,7 +70,7 @@ int wmain(int argc, wchar_t* argv[])
     if (bind(serverSocket, (const sockaddr*)&addr, sizeof(addr)) == SOCKET_ERROR)
     {
         closesocket(serverSocket);
-        logFatal(L"failed to bind server socket", WSAGetLastError());
+        logFatal(L"Falha ao abrir porta", WSAGetLastError());
     }
 
     sockaddr_in client{};
@@ -75,7 +80,7 @@ int wmain(int argc, wchar_t* argv[])
 
     if (!OpenPrinter(const_cast<LPWSTR>(printerName.c_str()), &hPrinter, NULL))
     {
-        logFatal(L"printer not available", GetLastError());
+        logFatal(L"Impressora indisponível", GetLastError());
     }
 
     DWORD cb;
@@ -86,7 +91,7 @@ int wmain(int argc, wchar_t* argv[])
         lerr = GetLastError();
         if (lerr != ERROR_INSUFFICIENT_BUFFER)
         {
-            logFatal(L"failed to get printer driver", lerr);
+            logFatal(L"Falha ao obter o driver da impressora", lerr);
             ClosePrinter(hPrinter);
         }
     }
@@ -95,7 +100,7 @@ int wmain(int argc, wchar_t* argv[])
     succeeded = GetPrinterDriver(hPrinter, NULL, 8, pdiBuffer, cb, &cb);
     if (!succeeded)
     {
-        logFatal(L"failed to get printer driver", GetLastError());
+        logFatal(L"Falha ao obter o driver da impressora", GetLastError());
         ClosePrinter(hPrinter);
     }
     DRIVER_INFO_8* pdi8 = (DRIVER_INFO_8*)pdiBuffer;
@@ -110,36 +115,36 @@ int wmain(int argc, wchar_t* argv[])
     delete[]pdiBuffer;
     ClosePrinter(hPrinter);
 
-    log(L"Print Server Started for '%s'", printerName.c_str());
+    log(L"Print Server iniciado para impressora '%s'", printerName.c_str());
     while (listen(serverSocket, 5) != SOCKET_ERROR)
     {
-        log(L"waiting for connection");
+        log(L"Aguardando conexão...");
         clientSocket = accept(serverSocket, (sockaddr*)&client, &size);
         if (clientSocket == INVALID_SOCKET) 
         {
-            logError(L"failed to accept client connection", WSAGetLastError());
+            logError(L"Falhou ao aceitar a conexão do cliente", WSAGetLastError());
             continue;
         }
-        log(L"connection from %d.%d.%d.%d", client.sin_addr.S_un.S_un_b.s_b1, client.sin_addr.S_un.S_un_b.s_b2, client.sin_addr.S_un.S_un_b.s_b3, client.sin_addr.S_un.S_un_b.s_b4);
+        log(L"Conexão de %d.%d.%d.%d", client.sin_addr.S_un.S_un_b.s_b1, client.sin_addr.S_un.S_un_b.s_b2, client.sin_addr.S_un.S_un_b.s_b3, client.sin_addr.S_un.S_un_b.s_b4);
         
         DOC_INFO_1 di{};
-        di.pDocName = const_cast<LPWSTR>(L"RAW Print Job");
+        di.pDocName = const_cast<LPWSTR>(L"Impressão RAW");
         di.pOutputFile = NULL;
         di.pDatatype = const_cast<LPWSTR>(dataType);
 
         if (!OpenPrinter(const_cast<LPWSTR>(printerName.c_str()), &hPrinter, NULL))
         {
-            logError(L"printer not available", GetLastError());
+            logError(L"Impressora indisponível", GetLastError());
             goto cleanup; // Yes, yes I am sure you can do better.
         }
 
         if (StartDocPrinter(hPrinter, 1, (LPBYTE)&di) <= 0)
         {
-            logError(L"failed to start the print job", GetLastError());
+            logError(L"Falha ao iniciar a impressão", GetLastError());
             goto cleanup;
         }
 
-        log(L"print job started");
+        log(L"Impressão iniciada");
         char buffer[4096];
         DWORD bytesWritten;
         while (true)
@@ -152,12 +157,12 @@ int wmain(int argc, wchar_t* argv[])
             BOOL result = WritePrinter(hPrinter, buffer, bytesRead, &bytesWritten);
             if (!result || bytesWritten != bytesRead)
             {
-                logError(L"print failed", GetLastError());
+                logError(L"Impressão falhou", GetLastError());
                 break;
             }
         }
         EndDocPrinter(hPrinter);
-        log(L"print job completed");
+        log(L"Impressão concluída");
 
     cleanup:
         if (clientSocket != INVALID_SOCKET)
@@ -182,7 +187,7 @@ void logFatal(LPCWSTR msg, int errCode)
 
 void logError(LPCWSTR msg, int errCode)
 {
-    std::wcerr << L"error: " << msg << L"(" << errCode << L")" << std::endl;
+    std::wcerr << L"erro: " << msg << L"(" << errCode << L")" << std::endl;
 }
 
 void log(LPCWSTR format, ...)
@@ -198,8 +203,8 @@ void showUsage()
 {
     log(L"WinPrintServer v1.1\r\n");
     log(L"WinPrintServer [options] [printername]");
-    log(L"  -h           Show this help information");
-    log(L"  printername  The name of the printer to print. If not specified the default printer is used");
+    log(L"  -h           Esxibe esta informação de ajuda.");
+    log(L"  printername  Nome da impressora desejada. Se não especificado a impressora padrão será usada.");
     exit(-1);
 }
 
