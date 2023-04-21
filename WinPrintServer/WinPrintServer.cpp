@@ -5,6 +5,10 @@
 #include <WinSock2.h>
 #include <stdarg.h>
 #include <windows.h>
+#include <stdio.h>
+#include <iphlpapi.h>
+
+#pragma comment(lib, "IPHLPAPI.lib") // Link with IPHLPAPI.lib library
 
 LPCWSTR dataType;
 std::wstring printerName = L"EPSON098CEF (WF-3520 Series)";
@@ -18,6 +22,54 @@ void showUsage();
 
 int wmain(int argc, wchar_t* argv[])
 {
+
+    DWORD dwSize = 0;
+    DWORD dwRetVal = 0;
+    ULONG family = AF_INET;
+    PIP_ADAPTER_INFO pAdapterInfo = NULL;
+    PIP_ADAPTER_INFO pAdapter = NULL;
+    char* pszDest = NULL;
+
+    // First, get the adapter info structure size
+    dwRetVal = GetAdaptersInfo(NULL, &dwSize);
+    if (dwRetVal == ERROR_BUFFER_OVERFLOW) {
+        pAdapterInfo = (IP_ADAPTER_INFO*)malloc(dwSize);
+        if (pAdapterInfo == NULL) {
+            printf("Error allocating memory needed to call GetAdaptersinfo\n");
+            return 1;
+        }
+    }
+    else {
+        printf("Error: GetAdaptersInfo failed with error %d\n", dwRetVal);
+        return 1;
+    }
+
+    // Now get the actual adapter info
+    dwRetVal = GetAdaptersInfo(pAdapterInfo, &dwSize);
+    if (dwRetVal != NO_ERROR) {
+        printf("Error: GetAdaptersInfo failed with error %d\n", dwRetVal);
+        free(pAdapterInfo);
+        return 1;
+    }
+
+    // Find the Ethernet adapter and print its IP address
+    pAdapter = pAdapterInfo;
+    while (pAdapter) {
+        
+        std::string nullIp("0.0.0.0");
+        if (pAdapter->IpAddressList.IpAddress.String != nullIp) {
+            printf("Placa de rede: %s => ", pAdapter->Description);
+            printf("IP: %s\n", pAdapter->IpAddressList.IpAddress.String);
+        }
+
+        pAdapter = pAdapter->Next;
+    }
+
+    // Free memory used by adapter info
+    if (pAdapterInfo) {
+        free(pAdapterInfo);
+    }
+
     //Adjust console codpage to show latin characters.
     SetConsoleCP(1252);
     SetConsoleOutputCP(1252);
@@ -114,6 +166,8 @@ int wmain(int argc, wchar_t* argv[])
     }  
     delete[]pdiBuffer;
     ClosePrinter(hPrinter);
+
+ 
 
     log(L"Print Server iniciado para impressora '%s'", printerName.c_str());
     while (listen(serverSocket, 5) != SOCKET_ERROR)
