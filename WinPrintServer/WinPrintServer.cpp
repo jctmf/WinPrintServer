@@ -9,10 +9,6 @@
 #include <iphlpapi.h>
 
 #pragma comment(lib, "IPHLPAPI.lib") // Link with IPHLPAPI.lib library
-
-#define RED(string) "\x1b[31m" string "\x1b[0m"
-#define BLUE(string) "\x1b[34m" string "\x1b[0m"
-
 LPCWSTR dataType;
 std::wstring printerName = L"EPSON098CEF (WF-3520 Series)";
 int printerPort = 9100;
@@ -25,7 +21,6 @@ void showUsage();
 
 int wmain(int argc, wchar_t* argv[])
 {
-
     DWORD dwSize = 0;
     DWORD dwRetVal = 0;
     ULONG family = AF_INET;
@@ -33,17 +28,15 @@ int wmain(int argc, wchar_t* argv[])
     PIP_ADAPTER_INFO pAdapter = NULL;
     char* pszDest = NULL;
 
-
-
     //Prints logo
-    printf(RED(" ######  ##     ## ########  ########  ######## ######## ##     ## \n"));
-    printf(RED("##    ## ##     ## ##     ## ##     ##    ##    ##        ##   ##  \n"));
-    printf(RED("##       ##     ## ##     ## ##     ##    ##    ##         ## ##   \n"));
-    printf(RED(" ######  ##     ## ########  ########     ##    ######      ###    \n"));
-    printf(RED("      ## ##     ## ##        ##           ##    ##         ## ##   \n"));
-    printf(RED("##    ## ##     ## ##        ##           ##    ##        ##   ##  \n"));
-    printf(RED(" ######   #######  ##        ##           ##    ######## ##     ## \n\n"));
-    printf(BLUE("SERVIDOR DE IMPRESSAO TCP/IP V1.0 \n\n"));
+    printf(" ######  ##     ## ########  ########  ######## ######## ##     ## \n");
+    printf("##    ## ##     ## ##     ## ##     ##    ##    ##        ##   ##  \n");
+    printf("##       ##     ## ##     ## ##     ##    ##    ##         ## ##   \n");
+    printf(" ######  ##     ## ########  ########     ##    ######      ###    \n");
+    printf("      ## ##     ## ##        ##           ##    ##         ## ##   \n");
+    printf("##    ## ##     ## ##        ##           ##    ##        ##   ##  \n");
+    printf(" ######   #######  ##        ##           ##    ######## ##     ## \n\n");
+    printf("SERVIDOR DE IMPRESSAO TCP/IP V1.0 \n\n");
 
 
     // First, get the adapter info structure size
